@@ -1,25 +1,48 @@
 /** @format */
 
 const express = require("express");
-const { randomBytes } = require("crypto");
 const bodyParser = require("body-parser");
+const { randomBytes } = require("crypto");
+const cors = require("cors");
+const axios = require("axios");
+
 const app = express();
-const posts = {};
 app.use(bodyParser.json());
-app.get("/post", function (req, res) {
-  res.status(201).send(posts);
+app.use(cors());
+app.use(function (req, res, next) {
+  console.info(`${req.method} ${req.originalUrl}`);
+  next();
+});
+const posts = {};
+
+app.get("/post/posts", (req, res) => {
+  res.send(posts);
 });
 
-app.post("/post", function (req, res) {
-  const id = randomBytes(16).toString("hex");
-  const body = req.body.title;
-  posts[id] = req.body.title;
-  res.status(201).send({
+app.post("/post/posts", async (req, res) => {
+  const id = randomBytes(4).toString("hex");
+  const { title } = req.body;
+
+  posts[id] = {
     id,
-    title: body,
+    title,
+  };
+
+  await axios.post("http://localhost:4005/event-bus/events", {
+    type: "PostCreated",
+    data: {
+      id,
+      title,
+    },
   });
+
+  res.status(201).send(posts[id]);
 });
 
-app.listen(4001, () => {
-  console.log("Micro Service - POSTS : Listening on port 4001");
+app.post("/post/events", (req, res) => {
+  res.send({});
+});
+
+app.listen(4000, () => {
+  console.log("Listening on 4000");
 });
